@@ -61,6 +61,19 @@ Only pins 1–3 are used. **Do not** connect pin 4 (+5 V) to MCU logic.
 On the Blues Swan the VE.Direct port is `Serial1`. Adjust the `HardwareSerial`
 instance in your sketch to match your board.
 
+**Adafruit Feather ESP32 V2:** the labeled `RX`/`TX` header pins are GPIO7/GPIO8,
+mapped to `Serial1` by the board's pin definitions, and are physically separate
+from the USB debug UART (`Serial`). `Serial1.begin(19200)` uses these pins by
+default on this board, so `vedirect.begin(Serial1, ...)` works with no extra pin
+configuration:
+
+| VE.Direct pin | Signal | Feather V2 pin |
+|---|---|---|
+| 1 | GND | GND |
+| 2 | TX | `RX` (GPIO7) |
+| 3 | RX | `TX` (GPIO8) |
+| 4 | +5 V | leave disconnected |
+
 ## Installation
 
 ### PlatformIO
@@ -265,6 +278,28 @@ ESP32 (`esp32dev`) targets — see `.github/workflows/ci.yml`.
 
 The bench-test plan against a real MPPT 75/15 (register values, load switching,
 async transitions) is documented in `VeDirect_Arduino_Spec.md` §8.4.
+
+### Flashing an example to real hardware
+
+Each example has a standalone companion PlatformIO project under `bench/` that
+depends on this library via a relative symlink, so edits to `src/` take effect
+immediately without reinstalling anything:
+
+| Example | Companion project |
+|---|---|
+| `BasicTelemetry` | `bench/feather_v2_basic` |
+| `LoadControl` | `bench/feather_v2_loadcontrol` |
+| `RegisterAccess` | `bench/feather_v2_registers` |
+| `AsyncNotifications` | `bench/feather_v2_async` |
+
+```sh
+cd bench/feather_v2_basic
+pio run -t upload -t monitor
+```
+
+These target `adafruit_feather_esp32_v2`. To bench-test a different board,
+copy one of these folders and change the `board =` line in its
+`platformio.ini` (find the exact ID with `pio boards | grep -i <name>`).
 
 ## License
 
