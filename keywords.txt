@@ -1,0 +1,64 @@
+#######################################
+# Syntax Coloring Map for VeDirect_Arduino
+#######################################
+
+#######################################
+# Datatypes (KEYWORD1)
+#######################################
+
+VeDirectArduino	KEYWORD1
+VeDirectData	KEYWORD1
+VeDirectAsyncCallback	KEYWORD1
+LoadMode	KEYWORD1
+ChargeState	KEYWORD1
+
+#######################################
+# Methods and Functions (KEYWORD2)
+#######################################
+
+begin	KEYWORD2
+loop	KEYWORD2
+data	KEYWORD2
+lastFrameValid	KEYWORD2
+msSinceLastFrame	KEYWORD2
+hexSet	KEYWORD2
+hexGet	KEYWORD2
+hexPing	KEYWORD2
+onAsync	KEYWORD2
+asyncPending	KEYWORD2
+popAsync	KEYWORD2
+getProductId	KEYWORD2
+getFirmwareVersion	KEYWORD2
+setLoadOutput	KEYWORD2
+getLoadOutput	KEYWORD2
+setChargeCurrentLimit	KEYWORD2
+getChargeCurrentLimit	KEYWORD2
+setAbsorptionVoltage	KEYWORD2
+getAbsorptionVoltage	KEYWORD2
+setFloatVoltage	KEYWORD2
+getFloatVoltage	KEYWORD2
+setEqualisationVoltage	KEYWORD2
+getEqualisationVoltage	KEYWORD2
+
+#######################################
+# Constants (LITERAL1)
+#######################################
+
+LOAD_OFF	LITERAL1
+LOAD_AUTO	LITERAL1
+LOAD_ON	LITERAL1
+LOAD_ALT1	LITERAL1
+LOAD_ALT2	LITERAL1
+LOAD_USER1	LITERAL1
+LOAD_USER2	LITERAL1
+LOAD_AES	LITERAL1
+CS_OFF	LITERAL1
+CS_FAULT	LITERAL1
+CS_BULK	LITERAL1
+CS_ABSORPTION	LITERAL1
+CS_FLOAT	LITERAL1
+CS_STORAGE	LITERAL1
+CS_EQUALIZE	LITERAL1
+CS_STARTING	LITERAL1
+CS_AUTO_EQUALIZE	LITERAL1
+CS_EXTERNAL_CONTROL	LITERAL1
