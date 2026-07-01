@@ -27,8 +27,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        # Primary target plus a second architecture to prove portability.
-        board: [ blues_swan_r5, esp32dev ]
+        # Primary target, the bench-test board (Adafruit Feather ESP32 V2),
+        # and a third architecture to prove portability.
+        board: [ blues_swan_r5, adafruit_feather_esp32_v2, esp32dev ]
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
