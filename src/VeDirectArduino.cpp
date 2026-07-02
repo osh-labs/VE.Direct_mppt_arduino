@@ -163,6 +163,14 @@ bool VeDirectArduino::popAsync(uint16_t* reg, uint32_t* value) {
 // ---------------------------------------------------------------------------
 // Blocking transceive
 // ---------------------------------------------------------------------------
+//
+// NOTE: HEX Error responses (RSP_ERROR) carry no register id (the wire format
+// has none), so a stale Error frame from an already-abandoned prior exchange
+// could in principle be misattributed to a *new* request if that new request
+// is issued for a different register with no intervening loop()/hexGet/hexSet
+// call to drain it first. Deliberately not "fixed" by pre-draining the RX
+// buffer here: that would also discard any Text protocol bytes mid-flight at
+// that moment, which is worse than this narrow, low-probability race.
 
 VeDirectArduino::WaitResult
 VeDirectArduino::_attempt(const uint8_t* frame, size_t len,

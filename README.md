@@ -80,14 +80,21 @@ configuration:
 
 ```ini
 lib_deps =
-    https://github.com/unitedconsulting/VeDirect_Arduino.git
+    https://github.com/osh-labs/VE.Direct_mppt_arduino.git
 ```
 
-Once published to the registry:
+Pinned to a released version (recommended once a tag exists):
 
 ```ini
 lib_deps =
-    unitedconsulting/VeDirect_Arduino @ ^0.1.0
+    https://github.com/osh-labs/VE.Direct_mppt_arduino.git#v0.1.0
+```
+
+Once published to the PlatformIO Registry:
+
+```ini
+lib_deps =
+    VeDirect_Arduino @ ^0.1.0
 ```
 
 ### Arduino IDE
