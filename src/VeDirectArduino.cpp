@@ -358,3 +358,105 @@ bool VeDirectArduino::getEqualisationVoltage(uint16_t* mV, unsigned long timeout
     if (mV) *mV = (uint16_t)(v * 10);
     return true;
 }
+
+// --- Battery type: 0xFF = user-defined (required before writing the user
+// charge parameters, else the controller rejects them with error 119) ---
+
+bool VeDirectArduino::setBatteryTypeUser(unsigned long timeoutMs) {
+    return hexSet(VeDirectRegisters::BATTERY_TYPE, 0xFF, 1, timeoutMs);
+}
+
+bool VeDirectArduino::getBatteryType(uint8_t* out, unsigned long timeoutMs) {
+    uint32_t v = 0;
+    if (!hexGet(VeDirectRegisters::BATTERY_TYPE, &v, timeoutMs)) {
+        return false;
+    }
+    if (out) *out = (uint8_t)(v & 0xFF);
+    return true;
+}
+
+// --- Temperature compensation: sn16, 0.01 mV/K. Written/read as a 2-byte
+// register; the signed value is carried in the low 16 bits. ---
+
+bool VeDirectArduino::setTempCompensation(int16_t centiMvPerK, unsigned long timeoutMs) {
+    return hexSet(VeDirectRegisters::TEMP_COMPENSATION,
+                  (uint32_t)(uint16_t)centiMvPerK, 2, timeoutMs);
+}
+
+bool VeDirectArduino::getTempCompensation(int16_t* out, unsigned long timeoutMs) {
+    uint32_t v = 0;
+    if (!hexGet(VeDirectRegisters::TEMP_COMPENSATION, &v, timeoutMs)) {
+        return false;
+    }
+    if (out) *out = (int16_t)(uint16_t)(v & 0xFFFF);  // reinterpret un16 as sn16
+    return true;
+}
+
+// --- Automatic equalisation mode: un8, 0 = off ---
+
+bool VeDirectArduino::setAutoEqualisation(uint8_t mode, unsigned long timeoutMs) {
+    return hexSet(VeDirectRegisters::AUTO_EQUALISE_MODE, mode, 1, timeoutMs);
+}
+
+bool VeDirectArduino::getAutoEqualisation(uint8_t* out, unsigned long timeoutMs) {
+    uint32_t v = 0;
+    if (!hexGet(VeDirectRegisters::AUTO_EQUALISE_MODE, &v, timeoutMs)) {
+        return false;
+    }
+    if (out) *out = (uint8_t)(v & 0xFF);
+    return true;
+}
+
+// --- System voltage: un8, whole volts ---
+
+bool VeDirectArduino::setSystemVoltage(uint8_t volts, unsigned long timeoutMs) {
+    return hexSet(VeDirectRegisters::SYSTEM_VOLTAGE, volts, 1, timeoutMs);
+}
+
+bool VeDirectArduino::getSystemVoltage(uint8_t* out, unsigned long timeoutMs) {
+    uint32_t v = 0;
+    if (!hexGet(VeDirectRegisters::SYSTEM_VOLTAGE, &v, timeoutMs)) {
+        return false;
+    }
+    if (out) *out = (uint8_t)(v & 0xFF);
+    return true;
+}
+
+// --- Maximum absorption time: un16, 0.01 hours (register unit, no scaling) ---
+
+bool VeDirectArduino::setMaxAbsorptionTime(uint16_t centiHours, unsigned long timeoutMs) {
+    return hexSet(VeDirectRegisters::MAX_ABSORPTION_TIME, centiHours, 2, timeoutMs);
+}
+
+bool VeDirectArduino::getMaxAbsorptionTime(uint16_t* out, unsigned long timeoutMs) {
+    uint32_t v = 0;
+    if (!hexGet(VeDirectRegisters::MAX_ABSORPTION_TIME, &v, timeoutMs)) {
+        return false;
+    }
+    if (out) *out = (uint16_t)(v & 0xFFFF);
+    return true;
+}
+
+// --- Charger on/off via remote control ---
+//
+// Enabling on/off control requires two writes: first arm the remote-control
+// on/off feature (REMOTE_CONTROL_USED bit 1 = 0x02), then write DEVICE_MODE
+// (1 = on, 0 = off). The enable mask is re-sent every call by design — it
+// clears on the controller's power-up and its bits are set-only, so re-sending
+// is harmless. If the enable write fails we do not attempt the mode write.
+
+bool VeDirectArduino::setCharger(bool on, unsigned long timeoutMs) {
+    if (!hexSet(VeDirectRegisters::REMOTE_CONTROL_USED, 0x00000002UL, 4, timeoutMs)) {
+        return false;
+    }
+    return hexSet(VeDirectRegisters::DEVICE_MODE, on ? 1 : 0, 1, timeoutMs);
+}
+
+bool VeDirectArduino::isCharging(bool* out, unsigned long timeoutMs) {
+    uint32_t v = 0;
+    if (!hexGet(VeDirectRegisters::DEVICE_STATE, &v, timeoutMs)) {
+        return false;
+    }
+    if (out) *out = (v != 0);  // 0 = OFF / not charging; any other state = charging
+    return true;
+}

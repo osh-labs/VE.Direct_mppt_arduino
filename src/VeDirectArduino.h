@@ -159,6 +159,38 @@ public:
     bool setEqualisationVoltage(uint16_t mV, unsigned long timeoutMs = 500);
     bool getEqualisationVoltage(uint16_t* mV,unsigned long timeoutMs = 500);
 
+    // Battery type. To change any of the user charge parameters above the
+    // controller requires the battery type to be user-defined (0xFF); otherwise
+    // it rejects the write with error 119. setBatteryTypeUser() switches it.
+    bool setBatteryTypeUser(unsigned long timeoutMs = 500);
+    bool getBatteryType(uint8_t* out, unsigned long timeoutMs = 500);
+
+    // Battery temperature compensation, in 0.01 mV/K (register unit). Signed:
+    // 0 disables compensation. Stored as sn16 on the wire.
+    bool setTempCompensation(int16_t centiMvPerK, unsigned long timeoutMs = 500);
+    bool getTempCompensation(int16_t* out,        unsigned long timeoutMs = 500);
+
+    // Automatic equalisation mode — days between cycles, 0 = off.
+    bool setAutoEqualisation(uint8_t mode,  unsigned long timeoutMs = 500);
+    bool getAutoEqualisation(uint8_t* out,  unsigned long timeoutMs = 500);
+
+    // Nominal system voltage, in whole volts (e.g. 12 for a 12 V system).
+    bool setSystemVoltage(uint8_t volts,  unsigned long timeoutMs = 500);
+    bool getSystemVoltage(uint8_t* out,   unsigned long timeoutMs = 500);
+
+    // Maximum absorption time, in 0.01 hours (register unit).
+    bool setMaxAbsorptionTime(uint16_t centiHours, unsigned long timeoutMs = 500);
+    bool getMaxAbsorptionTime(uint16_t* out,       unsigned long timeoutMs = 500);
+
+    // Charger on/off via remote control. setCharger() first (re-)enables the
+    // remote-control on/off feature (REMOTE_CONTROL_USED bit 1) and then writes
+    // DEVICE_MODE. The enable mask is re-sent on every call by design: it clears
+    // when the controller powers up, and the bits are set-only so a re-send is
+    // harmless. isCharging() reads DEVICE_STATE — any non-zero state is charging
+    // (0 = OFF / not charging).
+    bool setCharger(bool on,   unsigned long timeoutMs = 500);
+    bool isCharging(bool* out, unsigned long timeoutMs = 500);
+
 private:
     enum WaitResult { WAIT_MATCHED, WAIT_ERROR, WAIT_TIMEOUT };
 

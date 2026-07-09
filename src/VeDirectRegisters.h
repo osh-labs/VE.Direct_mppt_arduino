@@ -40,6 +40,13 @@ namespace VeDirectRegisters {
                                                        // of the Text "CS" field
     constexpr uint16_t CHARGE_STATE         = DEVICE_STATE; // spec alias
                                                        // (spec had 0xEDA1 — wrong)
+    constexpr uint16_t REMOTE_CONTROL_USED  = 0x0202;  // un32 bit-mask — which
+                                                       // remote-control features are
+                                                       // active. Bit 1 (0x02) enables
+                                                       // on/off via DEVICE_MODE. The
+                                                       // mask clears on the controller's
+                                                       // power-up; bits are set-only so
+                                                       // re-sending is harmless.
 
     // --- Battery settings (read/write) ---
     // WARNING: these are stored in non-volatile memory. Do NOT write them
@@ -56,6 +63,14 @@ namespace VeDirectRegisters {
                                                        // maximum current" (settable)
                                                        // (spec: 0xEDA0)
     constexpr uint16_t BATTERY_TYPE         = 0xEDF1;  // un8 (0xFF = user defined)
+    constexpr uint16_t TEMP_COMPENSATION    = 0xEDF2;  // sn16, 0.01 mV/K — battery
+                                                       // temperature compensation
+                                                       // (0 = disabled)
+    constexpr uint16_t AUTO_EQUALISE_MODE   = 0xEDFD;  // un8 (0 = off) — number of
+                                                       // days between automatic
+                                                       // equalisation cycles
+    constexpr uint16_t SYSTEM_VOLTAGE       = 0xEDEA;  // un8, V — nominal battery
+                                                       // system voltage (12 = 12 V)
 
     // --- Load output (read/write) — only on 10A/15A/20A models ---
     constexpr uint16_t LOAD_OUTPUT_CONTROL  = 0xEDAB;  // un8 enum — switching mode
