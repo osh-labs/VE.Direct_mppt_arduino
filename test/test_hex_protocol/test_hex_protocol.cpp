@@ -38,6 +38,20 @@ static std::string builtToString(const uint8_t* buf, size_t len) {
     return std::string(reinterpret_cast<const char*>(buf), len);
 }
 
+// Decode every complete HEX frame the library transmitted, in order. Used by
+// the convenience-setter tests to assert the on-the-wire register/value/width
+// (the frame's nibble is CMD_SET/CMD_GET, which the decoder reports identically
+// to the equal-valued RSP_SET/RSP_GET response nibbles).
+static std::vector<VeDirectHexProtocol::Frame>
+decodeTxFrames(const HardwareSerial& serial) {
+    std::vector<VeDirectHexProtocol::Frame> frames;
+    VeDirectHexProtocol dec;
+    for (uint8_t b : serial.txBuffer()) {
+        if (dec.feed(b)) frames.push_back(dec.lastFrame());
+    }
+    return frames;
+}
+
 // A minimal valid Text frame carrying a single V value.
 static std::string makeTextFrame(int mv) {
     std::string f = "\r\nV\t" + std::to_string(mv);
@@ -239,6 +253,176 @@ void test_set_load_output_convenience() {
                      tx.find(":8ABED0004") != std::string::npos);
 }
 
+// --- New charge-provisioning convenience setters/getters ----------------
+
+void test_set_battery_type_user_frame() {
+    HardwareSerial serial;
+    VeDirectArduino ve;
+    ve.begin(serial, 19200, 3);
+
+    // Controller echoes the Set with OK flags for BATTERY_TYPE (0xEDF1).
+    serial.injectRx(makeHexFrame(VeDirectHex::RSP_SET, {0xF1, 0xED, 0x00, 0xFF}));
+    TEST_ASSERT_TRUE(ve.setBatteryTypeUser(200));
+
+    // Exactly one frame: Set 0xEDF1 = 0xFF, 1-byte value, valid checksum.
+    std::vector<VeDirectHexProtocol::Frame> f = decodeTxFrames(serial);
+    TEST_ASSERT_EQUAL_INT(1, (int)f.size());
+    TEST_ASSERT_TRUE(f[0].checksumOk);
+    TEST_ASSERT_EQUAL_HEX8(VeDirectHex::CMD_SET, f[0].respType);
+    TEST_ASSERT_EQUAL_HEX16(0xEDF1, f[0].reg);
+    TEST_ASSERT_EQUAL_UINT32(0xFF, f[0].value);
+    TEST_ASSERT_EQUAL_UINT8(1, f[0].valueLen);
+}
+
+void test_set_temp_compensation_frame_signed() {
+    HardwareSerial serial;
+    VeDirectArduino ve;
+    ve.begin(serial, 19200, 3);
+
+    // -100 (0.01 mV/K) must serialise as the sn16 two's-complement 0xFF9C,
+    // little-endian, over 2 bytes.
+    serial.injectRx(makeHexFrame(VeDirectHex::RSP_SET, {0xF2, 0xED, 0x00, 0x9C, 0xFF}));
+    TEST_ASSERT_TRUE(ve.setTempCompensation(-100, 200));
+
+    std::vector<VeDirectHexProtocol::Frame> f = decodeTxFrames(serial);
+    TEST_ASSERT_EQUAL_INT(1, (int)f.size());
+    TEST_ASSERT_TRUE(f[0].checksumOk);
+    TEST_ASSERT_EQUAL_HEX16(0xEDF2, f[0].reg);
+    TEST_ASSERT_EQUAL_UINT32(0xFF9C, f[0].value);
+    TEST_ASSERT_EQUAL_UINT8(2, f[0].valueLen);
+}
+
+void test_get_temp_compensation_signed_roundtrip() {
+    HardwareSerial serial;
+    VeDirectArduino ve;
+    ve.begin(serial, 19200, 3);
+
+    // Controller returns 0xFF9C for 0xEDF2; must be reinterpreted as -100.
+    serial.injectRx(makeHexFrame(VeDirectHex::RSP_GET, {0xF2, 0xED, 0x00, 0x9C, 0xFF}));
+    int16_t out = 0;
+    TEST_ASSERT_TRUE(ve.getTempCompensation(&out, 200));
+    TEST_ASSERT_EQUAL_INT16(-100, out);
+}
+
+void test_set_auto_equalisation_frame() {
+    HardwareSerial serial;
+    VeDirectArduino ve;
+    ve.begin(serial, 19200, 3);
+
+    serial.injectRx(makeHexFrame(VeDirectHex::RSP_SET, {0xFD, 0xED, 0x00, 0x07}));
+    TEST_ASSERT_TRUE(ve.setAutoEqualisation(7, 200));
+
+    std::vector<VeDirectHexProtocol::Frame> f = decodeTxFrames(serial);
+    TEST_ASSERT_EQUAL_INT(1, (int)f.size());
+    TEST_ASSERT_TRUE(f[0].checksumOk);
+    TEST_ASSERT_EQUAL_HEX16(0xEDFD, f[0].reg);
+    TEST_ASSERT_EQUAL_UINT32(7, f[0].value);
+    TEST_ASSERT_EQUAL_UINT8(1, f[0].valueLen);
+}
+
+void test_set_system_voltage_frame() {
+    HardwareSerial serial;
+    VeDirectArduino ve;
+    ve.begin(serial, 19200, 3);
+
+    serial.injectRx(makeHexFrame(VeDirectHex::RSP_SET, {0xEA, 0xED, 0x00, 0x0C}));
+    TEST_ASSERT_TRUE(ve.setSystemVoltage(12, 200));
+
+    std::vector<VeDirectHexProtocol::Frame> f = decodeTxFrames(serial);
+    TEST_ASSERT_EQUAL_INT(1, (int)f.size());
+    TEST_ASSERT_TRUE(f[0].checksumOk);
+    TEST_ASSERT_EQUAL_HEX16(0xEDEA, f[0].reg);
+    TEST_ASSERT_EQUAL_UINT32(12, f[0].value);
+    TEST_ASSERT_EQUAL_UINT8(1, f[0].valueLen);
+}
+
+void test_set_max_absorption_time_frame() {
+    HardwareSerial serial;
+    VeDirectArduino ve;
+    ve.begin(serial, 19200, 3);
+
+    // 100 (0.01 h) -> 2-byte value, no scaling.
+    serial.injectRx(makeHexFrame(VeDirectHex::RSP_SET, {0xFB, 0xED, 0x00, 0x64, 0x00}));
+    TEST_ASSERT_TRUE(ve.setMaxAbsorptionTime(100, 200));
+
+    std::vector<VeDirectHexProtocol::Frame> f = decodeTxFrames(serial);
+    TEST_ASSERT_EQUAL_INT(1, (int)f.size());
+    TEST_ASSERT_TRUE(f[0].checksumOk);
+    TEST_ASSERT_EQUAL_HEX16(0xEDFB, f[0].reg);
+    TEST_ASSERT_EQUAL_UINT32(100, f[0].value);
+    TEST_ASSERT_EQUAL_UINT8(2, f[0].valueLen);
+}
+
+void test_set_charger_sends_mask_then_mode() {
+    HardwareSerial serial;
+    VeDirectArduino ve;
+    // Loopback: each transmitted Set command echoes back as an OK Set response
+    // (CMD_SET == RSP_SET), so both writes in setCharger() succeed.
+    serial.setLoopback(true);
+    ve.begin(serial, 19200, 3);
+
+    TEST_ASSERT_TRUE(ve.setCharger(true, 200));
+
+    // Two frames, in order: arm REMOTE_CONTROL_USED (0x0202 = 0x00000002, 4B),
+    // then DEVICE_MODE (0x0200 = 1, 1B).
+    std::vector<VeDirectHexProtocol::Frame> f = decodeTxFrames(serial);
+    TEST_ASSERT_EQUAL_INT(2, (int)f.size());
+
+    TEST_ASSERT_TRUE(f[0].checksumOk);
+    TEST_ASSERT_EQUAL_HEX16(0x0202, f[0].reg);
+    TEST_ASSERT_EQUAL_UINT32(0x00000002UL, f[0].value);
+    TEST_ASSERT_EQUAL_UINT8(4, f[0].valueLen);
+
+    TEST_ASSERT_TRUE(f[1].checksumOk);
+    TEST_ASSERT_EQUAL_HEX16(0x0200, f[1].reg);
+    TEST_ASSERT_EQUAL_UINT32(1, f[1].value);
+    TEST_ASSERT_EQUAL_UINT8(1, f[1].valueLen);
+}
+
+void test_set_charger_off_writes_mode_zero() {
+    HardwareSerial serial;
+    VeDirectArduino ve;
+    serial.setLoopback(true);
+    ve.begin(serial, 19200, 3);
+
+    TEST_ASSERT_TRUE(ve.setCharger(false, 200));
+
+    std::vector<VeDirectHexProtocol::Frame> f = decodeTxFrames(serial);
+    TEST_ASSERT_EQUAL_INT(2, (int)f.size());
+    TEST_ASSERT_EQUAL_HEX16(0x0200, f[1].reg);
+    TEST_ASSERT_EQUAL_UINT32(0, f[1].value);
+}
+
+void test_is_charging_maps_device_state() {
+    HardwareSerial serial;
+    VeDirectArduino ve;
+    ve.begin(serial, 19200, 3);
+
+    // DEVICE_STATE (0x0201) = Bulk (3) -> charging.
+    serial.injectRx(makeHexFrame(VeDirectHex::RSP_GET, {0x01, 0x02, 0x00, 0x03}));
+    bool charging = false;
+    TEST_ASSERT_TRUE(ve.isCharging(&charging, 200));
+    TEST_ASSERT_TRUE(charging);
+
+    // DEVICE_STATE = OFF (0) -> not charging.
+    serial.injectRx(makeHexFrame(VeDirectHex::RSP_GET, {0x01, 0x02, 0x00, 0x00}));
+    charging = true;
+    TEST_ASSERT_TRUE(ve.isCharging(&charging, 200));
+    TEST_ASSERT_FALSE(charging);
+}
+
+void test_get_battery_type_frame() {
+    HardwareSerial serial;
+    VeDirectArduino ve;
+    ve.begin(serial, 19200, 3);
+
+    // BATTERY_TYPE (0xEDF1) = 0xFF (user-defined).
+    serial.injectRx(makeHexFrame(VeDirectHex::RSP_GET, {0xF1, 0xED, 0x00, 0xFF}));
+    uint8_t bt = 0;
+    TEST_ASSERT_TRUE(ve.getBatteryType(&bt, 200));
+    TEST_ASSERT_EQUAL_HEX8(0xFF, bt);
+}
+
 void test_async_callback() {
     HardwareSerial serial;
     VeDirectArduino ve;
@@ -316,6 +500,16 @@ int main(int, char**) {
     RUN_TEST(test_ping_response);
     RUN_TEST(test_get_product_id);
     RUN_TEST(test_set_load_output_convenience);
+    RUN_TEST(test_set_battery_type_user_frame);
+    RUN_TEST(test_set_temp_compensation_frame_signed);
+    RUN_TEST(test_get_temp_compensation_signed_roundtrip);
+    RUN_TEST(test_set_auto_equalisation_frame);
+    RUN_TEST(test_set_system_voltage_frame);
+    RUN_TEST(test_set_max_absorption_time_frame);
+    RUN_TEST(test_set_charger_sends_mask_then_mode);
+    RUN_TEST(test_set_charger_off_writes_mode_zero);
+    RUN_TEST(test_is_charging_maps_device_state);
+    RUN_TEST(test_get_battery_type_frame);
     RUN_TEST(test_async_callback);
     RUN_TEST(test_async_queue_overflow);
     RUN_TEST(test_interleaved_text_and_hex);

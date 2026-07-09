@@ -39,6 +39,18 @@ setFloatVoltage	KEYWORD2
 getFloatVoltage	KEYWORD2
 setEqualisationVoltage	KEYWORD2
 getEqualisationVoltage	KEYWORD2
+setBatteryTypeUser	KEYWORD2
+getBatteryType	KEYWORD2
+setTempCompensation	KEYWORD2
+getTempCompensation	KEYWORD2
+setAutoEqualisation	KEYWORD2
+getAutoEqualisation	KEYWORD2
+setSystemVoltage	KEYWORD2
+getSystemVoltage	KEYWORD2
+setMaxAbsorptionTime	KEYWORD2
+getMaxAbsorptionTime	KEYWORD2
+setCharger	KEYWORD2
+isCharging	KEYWORD2
 
 #######################################
 # Constants (LITERAL1)
